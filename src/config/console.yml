@@ -8,11 +8,8 @@ logger:
 
 console:
     port: 7351
-    username: "Territory"
+    username: $NAKAMA_CONSOLE_USERNAME
     password: $NAKAMA_CONSOLE_PASSWORD
-
-database:
-    address: "root@cockroachdb:26257"
     
 session:
     token_expiry_sec: 7200 
