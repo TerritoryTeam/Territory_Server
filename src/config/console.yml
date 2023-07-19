@@ -1,0 +1,21 @@
+name: nakama-node-dev
+data_dir: "./data/"
+
+logger:
+    stdout: false
+    level: "debug"
+    file: "/nakama/data/logfile.log"
+
+console:
+    port: 7351
+    username: "Territory"
+    password: $NAKAMA_CONSOLE_PASSWORD
+
+database:
+    address: "root@cockroachdb:26257"
+    
+session:
+    token_expiry_sec: 7200 
+
+metrics:
+    prometheus_port: 9100
