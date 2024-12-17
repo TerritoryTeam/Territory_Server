@@ -11,6 +11,11 @@
 
 Test Environment is coming.
 
+### Language - Golang
+
+Our server is using Golang runtime. Please prepare your local development environment with golang. And you can reference this document: [Get Started with Go](https://golang.google.cn/doc/tutorial/getting-started)
+
+
 ### Contribute
 You can contribute to Territory Docs and be a part of our community through content contributions, engineering, or translation work. The Territory Docs project welcomes contributions from everyone who shares our goals and wants to contribute constructively and respectfully within our community.
 
