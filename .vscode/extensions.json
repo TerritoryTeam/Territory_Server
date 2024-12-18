@@ -1,0 +1,19 @@
+{
+    "recommendations": [
+        // language support
+        "golang.go",
+        "elementalcode.nakama-snippets",
+        // git mangement
+        "vscode.git",
+        "mhutchie.git-graph",
+        "donjayamanne.githistory",
+        // spell check for coding
+        "streetsidesoftware.code-spell-checker",
+        // docker management if you aren't familiar with docker
+        "ms-azuretools.vscode-docker",
+        // restful api testing
+        "Postman.postman-for-vscode",
+        // design tool for workflow and architecture
+        "pomdtr.excalidraw-editor",
+    ]
+}

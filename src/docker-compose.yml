@@ -18,14 +18,15 @@ services:
       timeout: 3s
       retries: 5
   nakama:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     entrypoint:
       - "/bin/sh"
       - "-ecx"
       - >
-          /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
-          exec /nakama/nakama --name nakama1 --database.address root@cockroachdb:26257 --logger.level DEBUG --session.token_expiry_sec 7200          
-    restart: "no"
+        /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
+        /nakama/dlv --log --log-output=debugger --listen=:4000 --headless=true --api-version 2 exec /nakama/nakama -- --name nakama1 --database.address root@cockroachdb:26257 --logger.level DEBUG --session.token_expiry_sec 7200          
     links:
       - "cockroachdb:db"
     depends_on:
@@ -36,10 +37,12 @@ services:
       - "7350"
       - "7351"
       - "9100"
+      - "2345"
     ports:
       - "7349:7349"
       - "7350:7350"
       - "7351:7351"
+      - "4000:4000"
     environment:
       - secret="1d4c58180d72078bd28444cbca0829c1fd3cda28"
       - client_id="Ov23liPDIgJgokquysgR"
@@ -48,5 +51,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    security_opt:
+      - "seccomp:unconfined"
+    stdin_open: true
+    tty: true
+    
 volumes:
   data:
