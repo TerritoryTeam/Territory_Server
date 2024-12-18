@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Delve into Docker",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "port": 4000,
+            "host": "127.0.0.1",
+            "showLog": true,
+            "debugAdapter": "dlv-dap",
+            "substitutePath": [
+                { 
+                    "from": "C:\\Projects\\Territory_Server\\src",
+                    "to": "territory.com/server"
+                },
+            ]
+        }
+    ]
+}
