@@ -46,11 +46,62 @@ cd src
 docker-compose up
 ```
 
+> 在容器环境启动的情况下，我们可以通过构建并更新部分镜像来部署代码变更：
+> ```shell
+> ```shell
+> docker-compose build --no-cache nakama
+> ```
+
 检查服务状态
 ```shell
 cd src
 docker-compose ps
 ```
+
+## 4 使用Visual Studio Code调试器
+
+在步骤**3.3**中，将默认默认使用调试镜像，并暴露`4000`端口用于远程调用**Delve**调试器
+
+### 4.1 进入Run & Debug试图
+
+在VS Code中，点击左侧活动栏中的**Run and Debug**，将进入调试试图。
+
+![Run and Debug](./images/vscode_run_and_debug.webp)
+
+### 4.2 设置中断点
+
+* **设置模块加载阶段的中断点**
+  
+  如果你需要调试在模块加载时立即执行的代码（例如 `InitModule` 函数中的代码），你需要在Nakama加载模块之前设置断点:
+  1. 在 VS Code 的调试面板中，找到 断点 部分。
+  2. 点击 + 按钮 添加一个断点。
+  3. 输入 `main.go:181`（或其他适当的行号），然后按 回车。
+  ![Setting a breakpoint in Nakama’s main.go before your module loads](./images/vscode_main_breakpoint.webp)
+
+  > 这告诉 *VS Code* 在*Nakama* 的 `main.go` 文件的第 `181` 行（或你选择的其他行）设置一个断点。
+
+* **设置自定义代码的中断点**：
+  
+  对于`Territory`正常代码的中断点，只需要在对应代码行，点击添加中断点即可。
+
+  ![Code Line Breakpoint](./images/vscode_codeline_breakpoint.png)
+
+### 4.3 启动调试器
+  
+  设置好断点后，点击 `Run and Debug` 视图顶部的 `Play` 按钮启动调试器。
+
+  ![Start Debug](./images/vscode_debug_button.webp)
+
+  此时，*Nakama*应该会运行，并且*VS Code*会在你设置的断点处暂停。你可以在左侧的 `Variables` 中看到执行到 `main.go:181`的局部变量。
+  
+> 请忽略如下报错：
+> ```bash
+> Could not load source 'github.com/heroiclabs/nakama/v3/main.go': Unsupported command: cannot process "source"
+> ```
+> 这个消息只是 VS Code 告诉你它无法识别 Nakama 的 `main.go` 文件，因此无法显示当前调试代码。
+
+## 5 使用Postman & API Explorer触发接口
+
 
 
 
