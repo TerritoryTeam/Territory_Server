@@ -1,23 +1,41 @@
 package api
 
 import (
-	"encoding/json"
+	"context"
+	"database/sql"
+	"io"
 	"net/http"
+
+	"github.com/heroiclabs/nakama-common/api"
+	"github.com/heroiclabs/nakama-common/runtime"
 )
 
-type TestResponse struct {
-	Success bool `json:"success"`
-}
+func BeforeAuthenticateCustom(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, in *api.AuthenticateCustomRequest) (*api.AuthenticateCustomRequest, error) {
+	logger.Info("Before Authenticate Custom")
 
-func HttpTest(w http.ResponseWriter, r *http.Request) {
-	response := &TestResponse{Success: true}
+	// default to use github as authenticate provider
+	const apiUrl = "https://api.github.com";
 
-	out, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
-		return
+	// Construct a payload to send to the third-party API
+	const payload = JSON.stringify({
+		id: in.account.id
+	});
+	
+	const response = nk.httpRequest(apiUrl, 'post', { 'content-type': 'application/json' }, JSON.stringify(payload));
+	if (response.code > 299) {
+		logger.error(`API error: ${response.body}`);
+		return null
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(out)
+	
+	const userInfo = JSON.parse(response.body);
+	if (!userInfo.userId || !userInfo.username) {
+		logger.error(`invalid API response: ${response.body}`)
+		return null;
+	}
+	
+	// Update the incoming authenticate request with the new user ID and username
+	in.account.id = userInfo.userId;
+	in.username = userInfo.username;
+	
+	return in, nil;
 }

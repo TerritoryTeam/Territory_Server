@@ -9,9 +9,15 @@ import (
 )
 
 func RegisterAPIs(initializer runtime.Initializer) error {
+
+	// Register the AuthenticateCustom function
+	if err := initializer.RegisterBeforeAuthenticateCustom(api.BeforeAuthenticateCustom); err != nil {
+		return err
+	}
+
 	// Register the HealthCheck RPC function
-	err := initializer.RegisterRpc("HealthCheck", api.RpcHealthCheck)
-	if err != nil {
+
+	if err := initializer.RegisterRpc("HealthCheck", api.RpcHealthCheck); err != nil {
 		return err
 	}
 
