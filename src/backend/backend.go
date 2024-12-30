@@ -6,18 +6,22 @@ import (
 	"github.com/heroiclabs/nakama-common/runtime"
 
 	"territory.com/server/backend/api"
+	"territory.com/server/backend/game"
 )
 
 func RegisterAPIs(initializer runtime.Initializer) error {
+
+	initializer.RegisterHttp("/test", api.HttpTest, http.MethodGet)
+
 	// Register the HealthCheck RPC function
-	err := initializer.RegisterRpc("HealthCheck", api.RpcHealthCheck)
-	if err != nil {
+	initializer.RegisterRpc("HealthCheck", api.RpcHealthCheck)
+
+	if err := initializer.RegisterMatch("lobby", game.RegisterLobbyMatch); err != nil {
 		return err
 	}
 
-	if err := initializer.RegisterHttp("/test", api.HttpTest, http.MethodGet); err != nil {
-		return err
-	}
+	// Register the CreateMatch RPC function
+	initializer.RegisterRpc("CreateMatch", api.CreateMatchRPC)
 
 	return nil
 }
