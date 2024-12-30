@@ -16,7 +16,7 @@ func CreateMatchRPC(ctx context.Context, logger runtime.Logger, db *sql.DB, nk r
 		return "", err
 	}
 
-	modulename := "lobby" // Name with which match handler was registered in InitModule, see example above.
+	modulename := "world" // Name with which match handler was registered in InitModule, see example above.
 
 	if matchId, err := nk.MatchCreate(ctx, modulename, params); err != nil {
 		return "", err
