@@ -23,3 +23,9 @@ func CreateMatchRPC(ctx context.Context, logger runtime.Logger, db *sql.DB, nk r
 		return matchId, nil
 	}
 }
+
+func ListAvailableRooms(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+	// List all available rooms
+	// Return a list of room names
+	return "", nil
+}
