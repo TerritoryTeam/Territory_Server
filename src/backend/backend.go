@@ -22,6 +22,7 @@ func RegisterAPIs(initializer runtime.Initializer) error {
 
 	// Register the CreateMatch RPC function
 	initializer.RegisterRpc("CreateMatch", api.CreateMatchRPC)
+	initializer.RegisterRpc("ListAvailableRooms", api.ListAvailableRooms)
 
 	return nil
 }

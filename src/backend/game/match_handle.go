@@ -28,9 +28,16 @@ func (m *WorldMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *s
 		Presences:         map[string]runtime.Presence{},
 		RoomOwningUserIDs: map[string]string{},
 		TerritoryWorld: *NewTerritoryWorld(
-			4,
-			240,
+			5,
+			5,
+			600,
 		),
+	}
+
+	capacity := state.Capacity()
+	for i := 0; i < capacity; i++ {
+		logger.Info("Creating new room: %d", i)
+		state.CreateNewRoom()
 	}
 
 	tickRate := 1 // 1 tick per second = 1 MatchLoop func invocations per second
