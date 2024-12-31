@@ -8,82 +8,97 @@ import (
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
-type LobbyMatch struct {
+type WorldMatch struct {
 }
 
-type LobbyMatchState struct {
-	presences  map[string]runtime.Presence
-	emptyTicks int
+type WorldMatchState struct {
+	Presences         map[string]runtime.Presence
+	RoomOwningUserIDs map[string]string
+	EmptyTick         int64
+	TerritoryWorld
 }
 
-func RegisterLobbyMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (runtime.Match, error) {
-	return &LobbyMatch{}, nil
+func RegisterWorldMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (runtime.Match, error) {
+	return &WorldMatch{}, nil
 }
 
-func (m *LobbyMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, params map[string]interface{}) (interface{}, int, string) {
-	state := &LobbyMatchState{
-		emptyTicks: 0,
-		presences:  map[string]runtime.Presence{},
+func (m *WorldMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, params map[string]interface{}) (interface{}, int, string) {
+	state := &WorldMatchState{
+		EmptyTick:         0,
+		Presences:         map[string]runtime.Presence{},
+		RoomOwningUserIDs: map[string]string{},
+		TerritoryWorld: *NewTerritoryWorld(
+			5,
+			5,
+			600,
+		),
 	}
+
+	capacity := state.Capacity()
+	for i := 0; i < capacity; i++ {
+		logger.Info("Creating new room: %d", i)
+		state.CreateNewRoom()
+	}
+
 	tickRate := 1 // 1 tick per second = 1 MatchLoop func invocations per second
-	label := ""
+	label := "Territory World Match Demo"
 	return state, tickRate, label
 }
 
-func (m *LobbyMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
-	lobbyState, ok := state.(*LobbyMatchState)
+func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
+	worldState, ok := state.(*WorldMatchState)
 	if !ok {
 		logger.Error("state not a valid lobby state object")
 		return nil
 	}
 
-	for i := 0; i < len(presences); i++ {
-		lobbyState.presences[presences[i].GetSessionId()] = presences[i]
+	for _, presence := range presences {
+		worldState.Presences[presence.GetSessionId()] = presence
 	}
 
-	return lobbyState
+	return worldState
 }
 
-func (m *LobbyMatch) MatchJoinAttempt(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presence runtime.Presence, metadata map[string]string) (interface{}, bool, string) {
+func (m *WorldMatch) MatchJoinAttempt(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presence runtime.Presence, metadata map[string]string) (interface{}, bool, string) {
 	// Allow all users to join the match
 	return state, true, ""
 }
 
-func (m *LobbyMatch) MatchLeave(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
-	lobbyState, ok := state.(*LobbyMatchState)
+func (m *WorldMatch) MatchLeave(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
+	worldState, ok := state.(*WorldMatchState)
 	if !ok {
 		logger.Error("state not a valid lobby state object")
 		return nil
 	}
 
 	for i := 0; i < len(presences); i++ {
-		delete(lobbyState.presences, presences[i].GetSessionId())
+		delete(worldState.Presences, presences[i].GetSessionId())
 	}
 
-	return lobbyState
+	return worldState
 }
 
-func (m *LobbyMatch) MatchLoop(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) interface{} {
-	lobbyState, ok := state.(*LobbyMatchState)
+func (m *WorldMatch) MatchLoop(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) interface{} {
+	worldState, ok := state.(*WorldMatchState)
 	if !ok {
 		logger.Error("state not a valid lobby state object")
 		return nil
 	}
 
-	// If we have no presences in the match according to the match state, increment the empty ticks count
-	if len(lobbyState.presences) == 0 {
-		lobbyState.emptyTicks++
+	// If there are no presences in the match, increment the empty tick counter
+	if len(worldState.Presences) == 0 {
+		worldState.EmptyTick++
 	}
 
-	// If the match has been empty for more than 100 ticks, end the match by returning nil
-	if lobbyState.emptyTicks > 100 {
+	// If the match has been live for more than max living ticks, end the match by returning nil
+	if tick > worldState.MaxTickToLive {
 		return nil
 	}
 
-	return lobbyState
+	return worldState
 }
 
-func (m *LobbyMatch) MatchTerminate(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, graceSeconds int) interface{} {
+func (m *WorldMatch) MatchTerminate(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, graceSeconds int) interface{} {
 	logger.Debug("match will terminate in %d seconds", graceSeconds)
 
 	var matchId string
@@ -128,6 +143,6 @@ func (m *LobbyMatch) MatchTerminate(ctx context.Context, logger runtime.Logger, 
 	return state
 }
 
-func (m *LobbyMatch) MatchSignal(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, data string) (interface{}, string) {
+func (m *WorldMatch) MatchSignal(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, data string) (interface{}, string) {
 	return state, "signal received: " + data
 }

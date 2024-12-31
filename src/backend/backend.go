@@ -16,12 +16,13 @@ func RegisterAPIs(initializer runtime.Initializer) error {
 	// Register the HealthCheck RPC function
 	initializer.RegisterRpc("HealthCheck", api.RpcHealthCheck)
 
-	if err := initializer.RegisterMatch("lobby", game.RegisterLobbyMatch); err != nil {
+	if err := initializer.RegisterMatch("world", game.RegisterWorldMatch); err != nil {
 		return err
 	}
 
 	// Register the CreateMatch RPC function
 	initializer.RegisterRpc("CreateMatch", api.CreateMatchRPC)
+	initializer.RegisterRpc("ListAvailableRooms", api.ListAvailableRooms)
 
 	return nil
 }
