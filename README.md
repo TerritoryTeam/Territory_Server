@@ -11,6 +11,8 @@
 
 Test Environment is coming.
 
+Follow [Guidance](./doc/How-to-debug-locally.md) to debug it locally.
+
 ### Language - Golang
 
 Our server is using Golang runtime. Please prepare your local development environment with golang. And you can reference this document: [Get Started with Go](https://golang.google.cn/doc/tutorial/getting-started)

@@ -48,7 +48,6 @@ docker-compose up
 
 > 在容器环境启动的情况下，我们可以通过构建并更新部分镜像来部署代码变更：
 > ```shell
-> ```shell
 > docker-compose build --no-cache nakama
 > ```
 
@@ -100,7 +99,7 @@ docker-compose ps
 > ```
 > 这个消息只是 VS Code 告诉你它无法识别 Nakama 的 `main.go` 文件，因此无法显示当前调试代码。
 
-## 5 使用Postman & API Explorer触发接口
+## 5 使用Postman & API Explorer调测接口
 
 
 
