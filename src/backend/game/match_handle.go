@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"time"
 
 	"github.com/heroiclabs/nakama-common/runtime"
+	"google.golang.org/protobuf/encoding/protojson"
+	"territory.com/server/backend/api"
 )
 
 type WorldMatch struct {
+	marshaler   *protojson.MarshalOptions
+	unmarshaler *protojson.UnmarshalOptions
 }
 
 type WorldMatchState struct {
@@ -23,7 +26,14 @@ type WorldMatchState struct {
 }
 
 func RegisterWorldMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (runtime.Match, error) {
-	return &WorldMatch{}, nil
+	return &WorldMatch{
+		marshaler: &protojson.MarshalOptions{
+			UseEnumNumbers: true,
+		},
+		unmarshaler: &protojson.UnmarshalOptions{
+			DiscardUnknown: false,
+		},
+	}, nil
 }
 
 func (m *WorldMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, params map[string]interface{}) (interface{}, int, string) {
@@ -48,48 +58,6 @@ func (m *WorldMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *s
 	tickRate := 1 // 1 tick per second = 1 MatchLoop func invocations per second
 	label := "Territory World Match Demo"
 	return state, tickRate, label
-}
-
-func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
-	worldState, ok := state.(*WorldMatchState)
-	if !ok {
-		logger.Error("state not a valid lobby state object")
-		return nil
-	}
-
-	currentTime := time.Now().UTC()
-
-	for _, presence := range presences {
-		worldState.emptyGameTick = 0
-		worldState.joinsInProgress--
-
-		userID := presence.GetUserId()
-		userName := presence.GetUsername()
-		joinType := JoinMessage_JOINTYPE_NEWUSER
-		if _, ok := worldState.roomOwningUserIDs[userID]; ok {
-			joinType = JoinMessage_JOINTYPE_REJOIN
-		}
-
-		// Broadcast a message to all matchs that a new user has joined
-		joinMessage := JoinLeaveMessage{
-			UserId:       userID,
-			UserName:     userName,
-			JoinType:     joinType,
-			JoinDatetime: currentTime,
-		}
-
-		joinMessageJson, err := json.Marshal(joinMessage)
-		if err != nil {
-			logger.Error("error marshaling join message: %v", err)
-			continue
-		}
-
-		worldState.presences[presence.GetSessionId()] = presence
-
-		dispatcher.BroadcastMessage(int64(OpCode_OPCODE_JOIN), joinMessageJson, nil, nil, true)
-	}
-
-	return worldState
 }
 
 func (m *WorldMatch) MatchJoinAttempt(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presence runtime.Presence, metadata map[string]string) (interface{}, bool, string) {
@@ -122,6 +90,71 @@ func (m *WorldMatch) MatchJoinAttempt(ctx context.Context, logger runtime.Logger
 	return state, true, ""
 }
 
+func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
+	worldState, ok := state.(*WorldMatchState)
+	if !ok {
+		logger.Error("state not a valid lobby state object")
+		return nil
+	}
+
+	currentPresences := make([]runtime.Presence, 0, len(worldState.presences))
+	for _, presence := range worldState.presences {
+		currentPresences = append(currentPresences, presence)
+	}
+
+	for _, presence := range presences {
+		worldState.emptyGameTick = 0
+		worldState.presences[presence.GetSessionId()] = presence
+		worldState.joinsInProgress--
+
+		userID := presence.GetUserId()
+		userName := presence.GetUsername()
+
+		joinType := api.JoinType_JOIN_TYPE_NEW_USER_JOIN
+		if _, ok := worldState.roomOwningUserIDs[userID]; ok {
+			joinType = api.JoinType_JOIN_TYPE_USER_REJOIN
+		}
+
+		if len(currentPresences) > 0 {
+			// Broadcast a message to all matches that a new user has joined
+			joinMessage := &api.UserJoinLeaveMessage{
+				UserId:   userID,
+				UserName: userName,
+				JoinType: joinType,
+			}
+
+			joinMessageBuf, err := m.marshaler.Marshal(joinMessage)
+			if err != nil {
+				logger.Error("error marshaling join message: %v", err)
+				continue
+			}
+
+			dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_USER_JOIN), joinMessageBuf, currentPresences, nil, false)
+		}
+
+		// Check if the user is already owning a room
+		// if _, ok := worldState.roomOwningUserIDs[userID]; ok {
+		// 	roomUpdateMessage := &api.RoomUpdateMessage{
+		// 		RoomName: "Test",
+		// 	}
+
+		// 	roomUpdateMessageBuf, err := m.marshaler.Marshal(roomUpdateMessage)
+		// 	if err != nil {
+		// 		logger.Error("error marshaling room update message: %v", err)
+		// 		continue
+		// 	}
+
+		// 	dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_ROOM_UPDATE), roomUpdateMessageBuf, []runtime.Presence{presence}, nil, true)
+		// } else {
+
+		// }
+
+		currentPresences = append(currentPresences, presence)
+	}
+
+	return worldState
+}
+
 func (m *WorldMatch) MatchLeave(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
 	worldState, ok := state.(*WorldMatchState)
 	if !ok {
@@ -134,14 +167,13 @@ func (m *WorldMatch) MatchLeave(ctx context.Context, logger runtime.Logger, db *
 		userName := presences[i].GetUsername()
 
 		// Broadcast a message to all match that a user has left
-		leaveMessage := JoinLeaveMessage{
-			UserId:       userID,
-			UserName:     userName,
-			JoinType:     JoinMessage_JOINTYPE_LEAVE,
-			JoinDatetime: time.Now().UTC(),
+		leaveMessage := &api.UserJoinLeaveMessage{
+			UserId:   userID,
+			UserName: userName,
+			JoinType: api.JoinType_JOIN_TYPE_USER_LEAVE,
 		}
 
-		messageJson, err := json.Marshal(leaveMessage)
+		messageBuf, err := m.marshaler.Marshal(leaveMessage)
 		if err != nil {
 			logger.Error("error marshaling leave message: %v", err)
 			continue
@@ -150,7 +182,8 @@ func (m *WorldMatch) MatchLeave(ctx context.Context, logger runtime.Logger, db *
 		worldState.Size--
 		delete(worldState.presences, presences[i].GetSessionId())
 
-		dispatcher.BroadcastMessage(int64(OpCode_OPCODE_LEAVE), messageJson, nil, nil, true)
+		dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_USER_LEAVE), messageBuf, nil, nil, true)
+
 	}
 
 	return worldState
@@ -174,6 +207,41 @@ func (m *WorldMatch) MatchLoop(ctx context.Context, logger runtime.Logger, db *s
 	if len(worldState.presences) == 0 {
 		worldState.emptyGameTick++
 	}
+
+	// There's a game in progress. Check for input, update match state, and send messages to clients.
+	// for _, message := range messages {
+	// 	switch api.OpCode(message.GetOpCode()) {
+	// 	case api.OpCode_OPCODE_ROOMS_LIST_AVAILABLE:
+	// 		// List all available rooms
+	// 		msg := &api.AvailableRoomsListParameters{}
+	// 		err := m.unmarshaler.Unmarshal(message.GetData(), msg)
+	// 		if err != nil {
+	// 			_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_USER_REJECT), nil, []runtime.Presence{message}, nil, true)
+	// 			continue
+	// 		}
+
+	// 		isolatedRoomsCount := len(worldState.IsolatedRooms)
+	// 		roomsListMessage := &api.AvailableRoomsMessage{
+	// 			Size:           int32(isolatedRoomsCount),
+	// 			AvailableRooms: nil,
+	// 			Offset:         0,
+	// 			Total:          0,
+	// 		}
+	// 		buf, err := m.marshaler.Marshal(roomsListMessage)
+
+	// 		if err == nil {
+	// 			_ = dispatcher.BroadcastMessage((int64(api.OpCode_OPCODE_ROOMS_LIST_AVAILABLE)), buf, []runtime.Presence{message}, nil, true)
+	// 		}
+
+	// case OPCODE_ROOMS_TAKE_OVER:
+	// 	// Take a room
+	// 	msg := &api.RoomTakeOverParameters{}
+
+	// 	default:
+	// 		logger.Warn("Unrecognized OpCode: %v", message.GetOpCode())
+	// 		_ = dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_USER_REJECT), nil, []runtime.Presence{message}, nil, true)
+	// 	}
+	// }
 
 	// If the match has been live for more than max living ticks, end the match by returning nil
 	if worldState.WorldTick > worldState.MaxWorldTickToLive {

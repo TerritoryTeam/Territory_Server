@@ -1,0 +1,54 @@
+// Copyright 2024 The Territory Author
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package api;
+
+option go_package = "territory.com/server/backend/api";
+
+// The complete set of opcodes used for communication between clients and server.
+enum OpCode {
+    // No operation specified. This is the default value.
+    OPCODE_UNSPECIFIED = 0;
+    // A user has joined the server.
+    OPCODE_USER_JOIN = 1;
+    // A user has left the server.
+    OPCODE_USER_LEAVE = 2;
+    // A room has been updated.
+    OPCODE_ROOM_UPDATE = 3;
+    // A list of available rooms for taking over.
+    OPCODE_ROOMS_LIST_AVAILABLE = 4;
+    // A user request to take over a room.
+    OPCODE_ROOMS_TAKE_OVER = 5;
+    // A user request to be reject
+    OPCODE_USER_REJECT = 6;
+}
+
+enum JoinType {
+    // No join type specified. This is the default value.
+    JOIN_TYPE_UNSPECIFIED = 0;
+    // A new user has joined the server.
+    JOIN_TYPE_NEW_USER_JOIN = 1;
+    // A user has rejoined the server.
+    JOIN_TYPE_USER_REJOIN = 2;
+    // A user has left the server.
+    JOIN_TYPE_USER_LEAVE = 3;
+}
+
+message UserJoinLeaveMessage {
+    string user_id = 1;
+    string user_name = 2;
+    JoinType join_type = 3;
+}
