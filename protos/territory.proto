@@ -22,15 +22,15 @@ option go_package = "territory.com/server/backend/api";
 enum OpCode {
     // No operation specified. This is the default value.
     OPCODE_UNSPECIFIED = 0;
-    // A user has joined the server.
+    // Message Event: A user has joined the server.
     OPCODE_USER_JOIN = 1;
-    // A user has left the server.
+    // Message Event: A user has left the server.
     OPCODE_USER_LEAVE = 2;
-    // A room has been updated.
+    // Message Event: A Room has been updated.
     OPCODE_ROOM_UPDATE = 3;
-    // A list of available rooms for taking over.
+    // Message Event: Available Room List
     OPCODE_ROOMS_LIST_AVAILABLE = 4;
-    // A user request to take over a room.
+    // Client Operation: A user request to take over a room.
     OPCODE_ROOMS_TAKE_OVER = 5;
     // A user request to be reject
     OPCODE_USER_REJECT = 6;
@@ -51,4 +51,22 @@ message UserJoinLeaveMessage {
     string user_id = 1;
     string user_name = 2;
     JoinType join_type = 3;
+}
+
+message User {
+    string user_id = 1;
+    string user_name = 2;
+    string user_avatar = 3;
+}
+
+message Room {
+    int32 room_x = 1;
+    int32 room_y = 2;
+    optional User userOwner = 3;
+}
+
+message ListWorldRoomsMessage {
+    string world_id = 1;
+    int32 room_total = 2;
+    repeated Room rooms = 3;
 }

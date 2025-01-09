@@ -1,4 +1,4 @@
-package game
+package models
 
 const (
 	BlockIDEmpty  byte = 0

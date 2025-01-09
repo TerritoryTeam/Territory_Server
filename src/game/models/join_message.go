@@ -1,4 +1,4 @@
-package game
+package models
 
 const (
 	JoinMessage_JOINTYPE_NEWUSER string = "NewUser"

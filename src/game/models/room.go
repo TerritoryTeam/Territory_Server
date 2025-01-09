@@ -1,4 +1,4 @@
-package game
+package models
 
 import (
 	"math/rand"
@@ -14,14 +14,18 @@ const (
 	boardSize     int = 1
 )
 
-type Room struct {
+type RoomBase struct {
 	Name        string
 	DisplayName string
-	Grid        [][]byte
 	Width       int
 	Height      int
 	OwnerID     string
+}
+
+type Room struct {
+	RoomBase
 	RoomPosition
+	Grid [][]byte
 }
 
 type RoomPosition struct {
@@ -43,12 +47,14 @@ func NewRoom(width, height int, ownerId string, seed string) *Room {
 	grid := generateRoomGrid(width, height, seed)
 
 	return &Room{
-		Name:        "Isolated Room",
-		DisplayName: "Isolated Room",
-		Grid:        grid,
-		Width:       width,
-		Height:      height,
-		OwnerID:     ownerId,
+		RoomBase: RoomBase{
+			Name:        "Isolated Room",
+			DisplayName: "Isolated Room",
+			Width:       width,
+			Height:      height,
+			OwnerID:     ownerId,
+		},
+		Grid: grid,
 		RoomPosition: RoomPosition{
 			WorldID: "",
 			RoomX:   0,

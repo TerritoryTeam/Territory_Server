@@ -1,4 +1,4 @@
-package game
+package matches
 
 import (
 	"context"
@@ -7,7 +7,9 @@ import (
 
 	"github.com/heroiclabs/nakama-common/runtime"
 	"google.golang.org/protobuf/encoding/protojson"
-	"territory.com/server/backend/api"
+
+	"territory.com/server/game/api"
+	"territory.com/server/game/models"
 )
 
 type WorldMatch struct {
@@ -17,12 +19,12 @@ type WorldMatch struct {
 
 type WorldMatchState struct {
 	presences            map[string]runtime.Presence
-	roomOwningUserIDs    map[string]*Room
+	roomOwningUserIDs    map[string]*models.Room
 	emptyGameTick        int
 	ticksUntilNextUpdate int
 	// Number of users currently in the process of connecting to the match.
 	joinsInProgress int
-	TerritoryWorld
+	models.TerritoryWorld
 }
 
 func RegisterWorldMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (runtime.Match, error) {
@@ -40,9 +42,9 @@ func (m *WorldMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *s
 	state := &WorldMatchState{
 		emptyGameTick:        0,
 		presences:            map[string]runtime.Presence{},
-		roomOwningUserIDs:    map[string]*Room{},
+		roomOwningUserIDs:    map[string]*models.Room{},
 		ticksUntilNextUpdate: 0,
-		TerritoryWorld: *NewTerritoryWorld(
+		TerritoryWorld: *models.NewTerritoryWorld(
 			5,
 			5,
 			100,
@@ -102,6 +104,8 @@ func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *s
 		currentPresences = append(currentPresences, presence)
 	}
 
+	var simpleRooms *api.ListWorldRoomsMessage = nil
+
 	for _, presence := range presences {
 		worldState.emptyGameTick = 0
 		worldState.presences[presence.GetSessionId()] = presence
@@ -133,21 +137,48 @@ func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *s
 		}
 
 		// Check if the user is already owning a room
-		// if _, ok := worldState.roomOwningUserIDs[userID]; ok {
-		// 	roomUpdateMessage := &api.RoomUpdateMessage{
-		// 		RoomName: "Test",
-		// 	}
+		if _, ok := worldState.roomOwningUserIDs[userID]; !ok {
+			if simpleRooms == nil {
+				totalRooms := len(worldState.Rooms)
 
-		// 	roomUpdateMessageBuf, err := m.marshaler.Marshal(roomUpdateMessage)
-		// 	if err != nil {
-		// 		logger.Error("error marshaling room update message: %v", err)
-		// 		continue
-		// 	}
+				simpleRooms = &api.ListWorldRoomsMessage{
+					WorldId:   worldState.ID,
+					RoomTotal: int32(totalRooms),
+					Rooms:     make([]*api.Room, 0, len(worldState.Rooms)),
+				}
 
-		// 	dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_ROOM_UPDATE), roomUpdateMessageBuf, []runtime.Presence{presence}, nil, true)
-		// } else {
+				for _, room := range worldState.Rooms {
+					var ownerRoom *api.User = nil
+					if room.OwnerID != "" {
+						account, err := nk.AccountGetId(ctx, room.OwnerID)
+						if err != nil {
+							logger.Error("error getting account for room owner: %v", err)
+							continue
+						}
 
-		// }
+						ownerRoom = &api.User{
+							UserId:     room.OwnerID,
+							UserName:   account.User.DisplayName,
+							UserAvatar: account.User.AvatarUrl,
+						}
+					}
+
+					simpleRooms.Rooms = append(simpleRooms.Rooms, &api.Room{
+						RoomX:     int32(room.RoomX),
+						RoomY:     int32(room.RoomY),
+						UserOwner: ownerRoom,
+					})
+				}
+			}
+
+			roomListMessageBuf, err := m.marshaler.Marshal(simpleRooms)
+			if err != nil {
+				logger.Error("error marshaling room update message: %v", err)
+				continue
+			}
+
+			dispatcher.BroadcastMessage(int64(api.OpCode_OPCODE_ROOMS_LIST_AVAILABLE), roomListMessageBuf, []runtime.Presence{presence}, nil, true)
+		}
 
 		currentPresences = append(currentPresences, presence)
 	}
