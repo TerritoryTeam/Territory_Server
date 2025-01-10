@@ -1,0 +1,5 @@
+{
+    "Energia":{"avatar": "faction_energia.svg", "color": "#CCBC30", "name": "Energia", "selectedAvatar": "faction_energia_hover.svg", "summary": "Offers unparalleled firepower and strong defenses, but their dependency on energy requires careful planning. Without energy, their units become weak and vulnerable."},
+    "MechaniX": {"avatar": "faction_mechanix.svg", "color": "#FF7378", "name": "MechaniX", "selectedAvatar": "faction_mechanix_hover.svg", "summary": "Has the advantage of automation and sheer numbers, but their units lack flexibility and mobility. They are best suited for large-scale battles."},
+    "XenoBio": {"avatar": "faction_xenobio.svg", "color": "#47B165", "name": "XenoBio", "selectedAvatar": "faction_xenobio_hover.svg", "summary": "Provides adaptability and powerful evolution options, making them excellent for fluid, dynamic playstyles, but they require more micromanagement and strategic planning."}
+}

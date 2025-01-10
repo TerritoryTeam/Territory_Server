@@ -1,0 +1,6 @@
+{
+    "Jupiter": {"avatar": "power.svg", "match_id": "bf2802a0-1016-4708-a839-f406400e8930.nakama1", "name": "Jupiter", "selectedAvatar": "power_hover.svg"},
+    "Mars": {"avatar": "energy.svg", "match_id": "bf2802a0-1016-4708-a839-f406400e8930.nakama1", "name": "Mars", "selectedAvatar": "energy_hover.svg"},
+    "Terra": {"avatar": "biomass.svg", "match_id": "bf2802a0-1016-4708-a839-f406400e8930.nakama1", "name": "Terra", "selectedAvatar": "biomass_hover.svg"},
+    "Venus": {"avatar": "metal.svg", "match_id": "bf2802a0-1016-4708-a839-f406400e8930.nakama1", "name": "Venus", "selectedAvatar": "metal_hover.svg"}
+}
