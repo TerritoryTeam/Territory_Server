@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"time"
+	
+	"github.com/heroiclabs/nakama-common/runtime"
 
 	"territory.com/server/backend"
-
-	"github.com/heroiclabs/nakama-common/runtime"
+	"territory.com/server/game"
 )
 
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
@@ -15,6 +16,10 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 
 	// Register backend functions
 	if err := backend.RegisterAPIs(initializer); err != nil {
+		return err
+	}
+
+	if err := game.RegisterGame(initializer); err != nil {
 		return err
 	}
 
