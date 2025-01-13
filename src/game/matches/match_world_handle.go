@@ -19,7 +19,6 @@ type WorldMatch struct {
 
 type WorldMatchState struct {
 	presences            map[string]runtime.Presence
-	roomOwningUserIDs    map[string]*models.Room
 	emptyGameTick        int
 	ticksUntilNextUpdate int
 	// Number of users currently in the process of connecting to the match.
@@ -42,7 +41,6 @@ func (m *WorldMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *s
 	state := &WorldMatchState{
 		emptyGameTick:        0,
 		presences:            map[string]runtime.Presence{},
-		roomOwningUserIDs:    map[string]*models.Room{},
 		ticksUntilNextUpdate: 0,
 		TerritoryWorld: *models.NewTerritoryWorld(
 			5,
@@ -51,11 +49,7 @@ func (m *WorldMatch) MatchInit(ctx context.Context, logger runtime.Logger, db *s
 		),
 	}
 
-	capacity := state.Capacity()
-	for i := 0; i < capacity; i++ {
-		logger.Info("Creating new room: %d", i)
-		state.CreateNewRoom()
-	}
+	state.InitializeRooms()
 
 	tickRate := 1 // 1 tick per second = 1 MatchLoop func invocations per second
 	label := "Territory World Match Demo"
@@ -115,7 +109,7 @@ func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *s
 		userName := presence.GetUsername()
 
 		joinType := api.JoinType_JOIN_TYPE_NEW_USER_JOIN
-		if _, ok := worldState.roomOwningUserIDs[userID]; ok {
+		if _, ok := worldState.OwningRooms[userID]; ok {
 			joinType = api.JoinType_JOIN_TYPE_USER_REJOIN
 		}
 
@@ -137,7 +131,7 @@ func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *s
 		}
 
 		// Check if the user is already owning a room
-		if _, ok := worldState.roomOwningUserIDs[userID]; !ok {
+		if _, ok := worldState.OwningRooms[userID]; !ok {
 			if simpleRooms == nil {
 				totalRooms := len(worldState.Rooms)
 
@@ -148,7 +142,7 @@ func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *s
 				}
 
 				for _, room := range worldState.Rooms {
-					var ownerRoom *api.User = nil
+
 					if room.OwnerID != "" {
 						account, err := nk.AccountGetId(ctx, room.OwnerID)
 						if err != nil {
@@ -156,17 +150,22 @@ func (m *WorldMatch) MatchJoin(ctx context.Context, logger runtime.Logger, db *s
 							continue
 						}
 
-						ownerRoom = &api.User{
+						ownerRoom := &api.User{
 							UserId:     room.OwnerID,
 							UserName:   account.User.DisplayName,
 							UserAvatar: account.User.AvatarUrl,
 						}
+
+						simpleRooms.Rooms = append(simpleRooms.Rooms, &api.Room{
+							RoomX:     int32(room.RoomX),
+							RoomY:     int32(room.RoomY),
+							UserOwner: ownerRoom,
+						})
 					}
 
 					simpleRooms.Rooms = append(simpleRooms.Rooms, &api.Room{
-						RoomX:     int32(room.RoomX),
-						RoomY:     int32(room.RoomY),
-						UserOwner: ownerRoom,
+						RoomX: int32(room.RoomX),
+						RoomY: int32(room.RoomY),
 					})
 				}
 			}
